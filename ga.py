@@ -3,6 +3,7 @@ import pandas
 from sklearn.tree import DecisionTreeClassifier 
 from sklearn.model_selection import train_test_split  
 from sklearn import metrics
+import copy
 class ga:
     dados = pandas.read_csv("diabetes.csv")
     def __init__(self, tax, num, ger):
@@ -15,29 +16,30 @@ class ga:
         met = rd.randint(0, 2)
         min = rd.uniform(0.001, 0.9)
         exemplo = [prof, met, min]
-        return exemplo
+        return exemplo[:]
     
     def geracao(self):
         self.lista = []
         i = 0
         while(i != self.num):
             self.lista.append(self.individado())
-            i+=1
-
-    def substituicao(self, lista):
-        self.lista = lista        
+            i+=1     
     
     def selecao(self):
         a = rd.randint(0, (self.num - 1))
-        self.ind1 = self.lista[a]  
+        self.ind1 = self.lista[a]
+
         self.lista.pop(a)
         b = rd.randint(0, (self.num - 2))
+
         self.ind2 = self.lista[b]
+
+
         if(a == (self.num - 1)):
             self.lista.append(self.ind1)
         else:
-            self.lista.insert(a, self.ind1)
-        return self.lista              
+            self.lista.insert(a, self.ind1)   
+              
 
     def comparar(self, n1, n2):   
         if(n1 > n2):
@@ -64,27 +66,51 @@ class ga:
         previsao = arvore.predict(self.X_teste)
         self.acuracia2 = metrics.accuracy_score(self.y_teste, previsao)
         maior = self.comparar(self.acuracia1, self.acuracia2)
-        return maior
+        return maior[:]
 
-    def crossing(self, melhores):
+    def crossing(self, melhores, int):
         c = rd.randint(7, 8)
-        first = melhores[0]
-        second = melhores[1]
-        if(c==8):
-            aux11 = first[1]
-            aux12 = first[2]
-            first[1] = second[1]
-            first[2] = second[2]
-            second[1] = aux11
-            second[2] = aux12
+        first = melhores[0 + int]
+        second = melhores[1 + int]
+        genes1 = []
+        genes2 = []
+        genes1.append(first[1])
+        genes1.append(first[2])
+        genes2.append(second[1])
+        genes2.append(second[2])
+        if(c == 8):
+            first.pop(1)
+            first.pop(1)
+            first.append(genes2[0])
+            first.append(genes2[1])
+            second.pop(1)
+            second.pop(1)
+            second.append(genes1[0])
+            second.append(genes1[1])
         else:
-            aux1 = first[2]
-            first[2] = second[2]
-            second[2] = aux1
-        melhores[0] = first
-        melhores[1] = second    
-        return melhores
+            first.pop(2) 
+            first.append(genes2[1])
+            second.pop(2)
+            second.append(genes1[1])
+        melhores[0 + int] = first
+        melhores[1 + int] = second
+        self.mutacao(first)
+        self.mutacao(second) 
     
+    def mutacao(self, ind):
+        z = 0
+        while(z != len(ind)):
+            mutacao = rd.randint(1, 100)
+            if(mutacao <= self.tax):
+                exe = self.individado()
+                if(z == 0):
+                    ind[0] = exe[0]
+                if(z == 1):
+                    ind[1] = exe[1]
+                if(z == 2):
+                    ind[2] = exe[2]
+            z+=1            
+                            
     def melhorDaGeracao(self):
         for item in self.lista:
             maior = 0
@@ -97,29 +123,43 @@ class ga:
                 maior = acuracia
             return maior    
 
-metodo = ga(2, 6, 3)
-metodo.gerarXY()
-metodo.geracao()
+metodo = ga(20, 100, 20)
 melhores = []
-melhoresAcuracias = []
-filhos = []
+selecionados = []
 i=0
 j=0
+k=0
+f=0
+
+metodo.gerarXY()
+metodo.geracao()
+melhores.append(metodo.melhorDaGeracao())
+while(f != metodo.num):
+    print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2],metodo.lista[f+3],metodo.lista[f+4])
+    f+=5
+f=0
+print("---------------------------------------------")
+print("---------------------------------------------")
 while(j != metodo.ger):
-
-    while(i != (metodo.num/2)):
-        print(metodo.lista)
-        melhoresAcuracias.append(metodo.melhorDaGeracao())   
+    while(i != metodo.num/2):    
         metodo.selecao()
-        melhores.append(metodo.fitness())
+        selecionados.append(metodo.fitness())
         metodo.selecao()
-        melhores.append(metodo.fitness())
-        x = metodo.crossing(melhores)
-        filhos.append(x[0])
-        filhos.append(x[1])
-        i+=1          
-metodo.substituicao(filhos)
-
-i = 0
-j+=1
-print(melhoresAcuracias)        
+        selecionados.append(metodo.fitness())
+        metodo.crossing(selecionados, k)
+        k+=2
+        i+=1
+    metodo.lista = selecionados[:]
+    while(f != metodo.num):
+       print(selecionados[f],selecionados[f+1],selecionados[f+2],selecionados[f+3],selecionados[f+4])
+       f+=5
+    f=0
+    print("---------------------------------------------")
+    print("---------------------------------------------")   
+    selecionados.clear()
+    melhores.append(metodo.melhorDaGeracao())
+    k=0
+    i=0
+    j+=1
+print("------------LISTA----------------")
+print(melhores)        
