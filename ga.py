@@ -4,6 +4,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split  
 from sklearn import metrics
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
 
 class ga:
     dados = pandas.read_csv("diabetes.csv")
@@ -26,19 +27,21 @@ class ga:
                 vizinhos = rd.randint(3, 11)
             peso = rd.randint(0,1)
             exemplo = [vizinhos, peso]
-            return exemplo[:]    
+            return exemplo[:]
+        elif(self.model == 2):
+            numarvores = rd.randint(1, 100)
+            prof = rd.randint(3, 150)
+            met = rd.randint(0, 2)
+            min = rd.uniform(0.001, 0.9)
+            exemplo = [numarvores, prof, met, min]
+            return exemplo[:]       
 
     def geracao(self):
         self.lista = []
         i = 0
-        if(self.model == 0):
-            while(i != self.num):
-                self.lista.append(self.individado())
-                i+=1
-        elif(self.model == 1):
-            while(i != self.num):
-                self.lista.append(self.individado())
-                i+=1          
+        while(i != self.num):
+            self.lista.append(self.individado())
+            i+=1        
          
     def selecao(self):
         a = rd.randint(0, (self.num - 1))
@@ -100,6 +103,23 @@ class ga:
             maior = self.comparar(self.ind1, self.ind2)
             return maior[:]
         
+        elif(self.model == 2):
+            tradutor = {0:"gini", 1:"entropy", 2:"log_loss"}
+            floresta = RandomForestClassifier(n_estimators=p[0], max_depth=p[1], criterion=tradutor[p[2]], min_samples_split=p[3])
+            floresta.fit(self.X_treino, self.y_treino)
+            previsao = floresta.predict(self.X_teste)
+            self.acuracia1 = metrics.accuracy_score(self.y_teste, previsao)
+
+            p = self.ind2
+            tradutor = {0:"gini", 1:"entropy", 2:"log_loss"}
+            floresta = RandomForestClassifier(n_estimators=p[0], max_depth=p[1], criterion=tradutor[p[2]], min_samples_split=p[3])
+            floresta.fit(self.X_treino, self.y_treino)
+            previsao = floresta.predict(self.X_teste)
+            self.acuracia2 = metrics.accuracy_score(self.y_teste, previsao)
+            maior = self.comparar(self.ind1, self.ind2)
+            return maior[:]
+
+        
     def crossing(self, melhores, int):
         first = melhores[0 + int]
         second = melhores[1 + int]
@@ -107,29 +127,64 @@ class ga:
         genes2 = []
         genes1.append(first[1])
         genes2.append(second[1])
-        if(self.model == 0):
-            c = rd.randint(7, 8)
+        if(self.model == 0 or self.model == 2):
             genes1.append(first[2])
             genes2.append(second[2])
-            if(c == 8):
-                first.pop(1)
-                first.pop(1)
-                first.append(genes2[0])
-                first.append(genes2[1])
-                second.pop(1)
-                second.pop(1)
-                second.append(genes1[0])
-                second.append(genes1[1])
+            if(self.model == 0):
+                c = rd.randint(7, 8)
+                if(c == 8):
+                    first.pop(1)
+                    first.pop(1)
+                    first.append(genes2[0])
+                    first.append(genes2[1])
+                    second.pop(1)
+                    second.pop(1)
+                    second.append(genes1[0])
+                    second.append(genes1[1])
+                else:
+                    first.pop(2) 
+                    first.append(genes2[1])
+                    second.pop(2)
+                    second.append(genes1[1])
+
             else:
-                first.pop(2) 
-                first.append(genes2[1])
-                second.pop(2)
-                second.append(genes1[1])
+                genes1.append(first[3])
+                genes2.append(second[3])
+                c = rd.randint(1, 3)
+                if(c == 1):
+                    first.pop(1)
+                    first.pop(1)
+                    first.pop(1)
+                    first.append(genes2[0])
+                    first.append(genes2[1])
+                    first.append(genes2[2])     
+                    second.pop(1)
+                    second.pop(1) 
+                    second.pop(1)
+                    second.append(genes1[0])
+                    second.append(genes1[1])
+                    second.append(genes1[2])
+                elif(c == 2):
+                    first.pop(2)
+                    first.pop(2)
+                    first.append(genes2[1])
+                    first.append(genes2[2])
+                    second.pop(2)
+                    second.pop(2)
+                    second.append(genes1[1])
+                    second.append(genes1[2])
+                else:
+                    first.pop(3)
+                    first.append(genes2[2])
+                    second.pop(3)
+                    second.append(genes1[2])             
+
         elif(self.model == 1):
             first.pop(1)
             first.append(genes2[0])
             second.pop(1)
             second.append(genes1[0])
+
         melhores[0 + int] = first
         melhores[1 + int] = second
         self.mutacao(first)
@@ -147,7 +202,8 @@ class ga:
                         ind[1] = rd.randint(0, 2)
                     else:
                         ind[2] = rd.uniform(0.001, 0.9)
-                z+=1   
+                z+=1 
+
         elif(self.model == 1):
             while(z != len(ind)):
                 mutacao = rd.randint(1,100)
@@ -158,7 +214,21 @@ class ga:
                             ind[0] = rd.randint(3, 7)
                     else:
                         ind[1] = rd.randint(0, 1)   
-                z+=1             
+                z+=1 
+
+        elif(self.model == 2):
+            while(z != len(ind)):
+                mutacao = rd.randint(1, 100)
+                if(mutacao <= self.tax):
+                    if(z == 0):
+                        ind[0] = rd.randint(1, 100)
+                    elif(z == 1):
+                        ind[1] = rd.randint(3, 150)
+                    elif(z == 2):
+                        ind[2] = rd.randint(0, 2)
+                    else:
+                        ind[3] = rd.uniform(0.001, 0.9) 
+                z+=1                   
                             
     def melhorDaGeracao(self):
         maior = 0
@@ -171,7 +241,8 @@ class ga:
                 acuracia = metrics.accuracy_score(self.y_teste, previsao)
                 if(acuracia > maior):
                     maior = acuracia
-                return maior 
+            return maior 
+            
         elif(self.model == 1):
             for item in self.lista:
                 tradutor = {0:"uniform", 1:"distance"}
@@ -181,9 +252,20 @@ class ga:
                 acuracia = metrics.accuracy_score(self.y_teste, previsao)
                 if(acuracia > maior):
                     maior = acuracia
-                return maior
+            return maior
 
-metodo = ga(50, 20, 10, 1)
+        elif(self.model == 2):
+            for item in self.lista:
+                tradutor = {0:"gini", 1:"entropy", 2:"log_loss"}
+                floresta = RandomForestClassifier(n_estimators=item[0], max_depth=item[1], criterion=tradutor[item[2]], min_samples_split=item[3])
+                floresta.fit(self.X_treino, self.y_treino)
+                previsao = floresta.predict(self.X_teste)
+                acuracia = metrics.accuracy_score(self.y_teste, previsao)
+                if(acuracia > maior):
+                    maior = acuracia
+            return maior    
+
+metodo = ga(50, 10, 15, 2)
 melhores = []
 selecionados = []
 i=0
