@@ -5,9 +5,10 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 
 class ga:
-    dados = pandas.read_csv("diabetes.csv")
+    dados = pandas.read_csv("heart (1).csv")
     def __init__(self, tax, num, ger, model):
         self.tax = tax
         self.num = num
@@ -19,23 +20,25 @@ class ga:
             prof = rd.randint(3, 150)
             met = rd.randint(0, 2)
             min = rd.uniform(0.001, 0.9)
-            exemplo = [prof, met, min]
-            return exemplo[:]       
+            exemplo = [prof, met, min]       
         elif(self.model == 1):
             vizinhos = 2
             while(vizinhos % 2 == 0):
                 vizinhos = rd.randint(3, 11)
             peso = rd.randint(0,1)
             exemplo = [vizinhos, peso]
-            return exemplo[:]
         elif(self.model == 2):
             numarvores = rd.randint(1, 100)
             prof = rd.randint(3, 150)
             met = rd.randint(0, 2)
             min = rd.uniform(0.001, 0.9)
             exemplo = [numarvores, prof, met, min]
-            return exemplo[:]       
-
+        else:
+            c = rd.uniform(0.1, 1)
+            kernel = rd.randint(0, 3)
+            exemplo = [c, kernel]      
+        return exemplo[:]
+    
     def geracao(self):
         self.lista = []
         i = 0
@@ -80,13 +83,11 @@ class ga:
             self.acuracia1 = metrics.accuracy_score(self.y_teste, previsao) 
 
             p = self.ind2
-            tradutor = {0:"gini", 1:"entropy", 2:"log_loss"}
             arvore = DecisionTreeClassifier(max_depth=p[0], criterion=tradutor[p[1]], min_samples_split=p[2])
             arvore.fit(self.X_treino, self.y_treino)
             previsao = arvore.predict(self.X_teste)
             self.acuracia2 = metrics.accuracy_score(self.y_teste, previsao)
             maior = self.comparar(self.acuracia1, self.acuracia2)
-            return maior[:]
         
         elif(self.model == 1):
             tradutor = {0:"uniform", 1:"distance"}
@@ -100,8 +101,7 @@ class ga:
             knn.fit(self.X_treino, self.y_treino)
             previsao = knn.predict(self.X_teste)
             self.acuracia2 = metrics.accuracy_score(self.y_teste, previsao)
-            maior = self.comparar(self.ind1, self.ind2)
-            return maior[:]
+            maior = self.comparar(self.acuracia1, self.acuracia2)           
         
         elif(self.model == 2):
             tradutor = {0:"gini", 1:"entropy", 2:"log_loss"}
@@ -111,16 +111,29 @@ class ga:
             self.acuracia1 = metrics.accuracy_score(self.y_teste, previsao)
 
             p = self.ind2
-            tradutor = {0:"gini", 1:"entropy", 2:"log_loss"}
             floresta = RandomForestClassifier(n_estimators=p[0], max_depth=p[1], criterion=tradutor[p[2]], min_samples_split=p[3])
             floresta.fit(self.X_treino, self.y_treino)
             previsao = floresta.predict(self.X_teste)
             self.acuracia2 = metrics.accuracy_score(self.y_teste, previsao)
-            maior = self.comparar(self.ind1, self.ind2)
-            return maior[:]
+            maior = self.comparar(self.acuracia1, self.acuracia2)
 
-        
+        else:
+            tradutor = {0:"linear", 1:"poly", 2:"rbf", 3:"sigmoid"}
+            svm = SVC(C=p[0], kernel=tradutor[p[1]])
+            svm.fit(self.X_treino, self.y_treino)
+            previsao = svm.predict(self.X_teste)
+            self.acuracia1 = metrics.accuracy_score(self.y_teste, previsao)
+
+            p = self.ind2
+            svm = SVC(C=p[0], kernel=tradutor[p[1]])
+            svm.fit(self.X_treino, self.y_treino)
+            previsao = svm.predict(self.X_teste)
+            self.acuracia2 = metrics.accuracy_score(self.y_teste, previsao)
+            maior = self.comparar(self.acuracia1, self.acuracia2)
+        return maior[:]
+    
     def crossing(self, melhores, int):
+        
         first = melhores[0 + int]
         second = melhores[1 + int]
         genes1 = []
@@ -179,7 +192,7 @@ class ga:
                     second.pop(3)
                     second.append(genes1[2])             
 
-        elif(self.model == 1):
+        else:
             first.pop(1)
             first.append(genes2[0])
             second.pop(1)
@@ -228,7 +241,16 @@ class ga:
                         ind[2] = rd.randint(0, 2)
                     else:
                         ind[3] = rd.uniform(0.001, 0.9) 
-                z+=1                   
+                z+=1 
+        else:
+            while(z != len(ind)):
+                mutacao = rd.randint(1, 100)
+                if(mutacao <= self.tax):
+                    if(z == 0):
+                        ind[0] = rd.uniform(0.1, 1)
+                    else:
+                        ind[1] = rd.randint(0,3)
+                z+=1                                      
                             
     def melhorDaGeracao(self):
         maior = 0
@@ -241,7 +263,6 @@ class ga:
                 acuracia = metrics.accuracy_score(self.y_teste, previsao)
                 if(acuracia > maior):
                     maior = acuracia
-            return maior 
             
         elif(self.model == 1):
             for item in self.lista:
@@ -252,7 +273,6 @@ class ga:
                 acuracia = metrics.accuracy_score(self.y_teste, previsao)
                 if(acuracia > maior):
                     maior = acuracia
-            return maior
 
         elif(self.model == 2):
             for item in self.lista:
@@ -263,9 +283,19 @@ class ga:
                 acuracia = metrics.accuracy_score(self.y_teste, previsao)
                 if(acuracia > maior):
                     maior = acuracia
-            return maior    
 
-metodo = ga(50, 10, 15, 2)
+        else:
+            for item in self.lista:
+                tradutor = {0:"linear", 1:"poly", 2:"rbf", 3:"sigmoid"}
+                svm = SVC(C=item[0], kernel=tradutor[item[1]])
+                svm.fit(self.X_treino, self.y_treino)
+                previsao = svm.predict(self.X_teste)
+                acuracia = metrics.accuracy_score(self.y_teste, previsao)
+                if(acuracia > maior):
+                    maior = acuracia  
+        return maior                     
+
+metodo = ga(tax = 50, num = 10, ger = 10, model = 3)
 melhores = []
 selecionados = []
 i=0
@@ -276,8 +306,22 @@ f=0
 metodo.gerarXY()
 metodo.geracao()
 while(f != metodo.num):
-    print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2],metodo.lista[f+3],metodo.lista[f+4])
-    f+=5
+    if(metodo.num - f >= 5):
+        print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2],metodo.lista[f+3],metodo.lista[f+4])
+        f+=5
+    else:
+        if(metodo.num - f == 4):
+            print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2],metodo.lista[f+3])
+            f+=4  
+        elif(metodo.num - f == 3):
+            print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2])
+            f+=3
+        elif(metodo.num - f == 2):
+            print(metodo.lista[f],metodo.lista[f+1])
+            f+=2
+        else:
+            print(metodo.lista[f])
+            f+=1             
 f=0
 print("---------------------------------------------")
 print("---------------------------------------------")
@@ -292,8 +336,22 @@ while(j != metodo.ger):
         i+=1
     metodo.lista = selecionados[:]
     while(f != metodo.num):
-       print(selecionados[f],selecionados[f+1],selecionados[f+2],selecionados[f+3],selecionados[f+4])
-       f+=5
+        if(metodo.num - f >= 5):
+            print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2],metodo.lista[f+3],metodo.lista[f+4])
+            f+=5
+        else:
+            if(metodo.num - f == 4):
+                print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2],metodo.lista[f+3])
+                f+=4
+            elif(metodo.num - f == 3):
+                print(metodo.lista[f],metodo.lista[f+1],metodo.lista[f+2])
+                f+=3
+            elif(metodo.num - f == 2):
+                print(metodo.lista[f],metodo.lista[f+1])
+                f+=2
+            else:
+                print(metodo.lista[f])
+                f+=1
     f=0
     print("---------------------------------------------")
     print("---------------------------------------------")   
@@ -303,4 +361,4 @@ while(j != metodo.ger):
     i=0
     j+=1
 print("------------LISTA----------------")
-print(melhores)   
+print(melhores)
